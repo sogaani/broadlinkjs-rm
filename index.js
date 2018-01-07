@@ -54,7 +54,7 @@ Broadlink.prototype.genDevice = function (devtype, host, mac, port){
     }
 }
 
-Broadlink.prototype.discover = function(lport1 = 0, lport2 = 0){
+Broadlink.prototype.discover = function(lport1 = 0, lport2 = 0, destaddr = '255.255.255.255'){
     self = this;
     var interfaces = os.networkInterfaces();
     var addresses = [];
@@ -117,7 +117,7 @@ Broadlink.prototype.discover = function(lport1 = 0, lport2 = 0){
         packet[0x20] = checksum & 0xff;
         packet[0x21] = checksum >> 8;
 
-        cs.sendto(packet, 0, packet.length, 80, '255.255.255.255');
+        cs.sendto(packet, 0, packet.length, 80, destaddr);
 
     });
 
