@@ -49,7 +49,36 @@ Broadlink.prototype.genDevice = function (devtype, host, mac, port) {
         dev = new device(host, mac, port);
         dev.rm();
         return dev;;
+    } else if (devtype == 0x279d) { // RM3 Pro Plus
+        dev = new device(host, mac, port);
+        dev.rm(true);
+        return dev;;
     } else {
+        if (devtype == 0) { // SP1
+            return null;;
+        } else if (devtype == 0x2711) { // SP2
+            return null;;
+        } else if (devtype == 0x2719 || devtype == 0x7919 || devtype == 0x271a || devtype == 0x791a) { // Honeywell SP2
+            return null;;
+        } else if (devtype == 0x2720) { // SPMini
+            return null;;
+        } else if (devtype == 0x753e) { // SP3
+            return null;;
+        } else if (devtype == 0x2728) { // SPMini2
+            return null;;
+        } else if (devtype == 0x2733 || devtype == 0x273e) { // OEM branded SPMini
+            return null;;
+        } else if (devtype >= 0x7530 && devtype <= 0x7918) { // OEM branded SPMini2
+            return null;;
+        } else if (devtype == 0x2736) { // SPMiniPlus
+            return null;;
+        } else if (devtype == 0x2714) { // A1
+            return null;;
+        } else if (devtype == 0x4EB5) { // MP1
+            return null;;
+        }
+
+        console.log(`\n\x1b[31m[Important!]\x1b[30m We've discovered an unknown Broadlink device.\n\nPlease raise an issue in the GitHub repository (https://github.com/lprhodes/homebridge-broadlink-rm/issues) with details of the type of device and its device type code: "${devtype.toString(16)}" so that we can handle it correctly and prevent this message from appearing.\n`);
         return null;
     }
 }
@@ -139,11 +168,11 @@ Broadlink.prototype.discover = function (lport1 = 0, lport2 = 0, destaddr = '255
             this.devices = {};
         }
 
-        if (!this.devices[mac]) {
+        var key = mac.toString('hex');
+        if (!this.devices[key]) {
             var dev = this.genDevice(devtype, host, mac, Array.isArray(lport2) ? lport2[ports] : lport2);
-            ports++;
             if (dev) {
-                this.devices[mac] = dev;
+                this.devices[key] = dev;
                 dev.on("deviceReady", () => { this.emit("deviceReady", dev); });
                 dev.auth();
             }
@@ -252,7 +281,7 @@ device.prototype.getType = function () {
     return this.type;
 }
 
-device.prototype.sendPacket = function (command, payload) {
+device.prototype.sendPacket = function(command, payload, debug = false){
     this.count = (this.count + 1) & 0xffff;
     var packet = Buffer.alloc(0x38, 0);
     packet[0x00] = 0x5a;
@@ -316,9 +345,14 @@ device.prototype.sendPacket = function (command, payload) {
     packet[0x20] = checksum & 0xff;
     packet[0x21] = checksum >> 8;
 
-    // console.log('packet', packet.toString('hex'))
+    if (debug) {
+        console.log('packet', packet.toString('hex'))
+    }
 
-    this.cs.sendto(packet, 0, packet.length, this.host.port, this.host.address);
+    this.cs.send(packet, 0, packet.length, this.host.port, this.host.address, (err, bytes) => {
+        if (debug && err) console.log('send packet error', err)
+        if (debug) console.log('sent packet - bytes: ', bytes)
+    });
 }
 
 device.prototype.rm = function (isPlus) {
@@ -355,10 +389,10 @@ device.prototype.rm = function (isPlus) {
         }
     }
 
-    this.sendData = function (data) {
+    this.sendData = function(data, debug = false){
         packet = new Buffer([0x02, 0x00, 0x00, 0x00]);
         packet = Buffer.concat([packet, data]);
-        this.sendPacket(0x6a, packet);
+        this.sendPacket(0x6a, packet, debug);
     }
 
     this.enterLearning = function () {
