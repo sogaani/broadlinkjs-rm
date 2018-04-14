@@ -43,9 +43,11 @@ unsupportedDeviceTypes[parseInt(0x4E4D, 16)] = 'Dooya DT360E (DOOYA_CURTAIN_V2) 
 
 class Broadlink extends EventEmitter {
 
-  constructor () {
+  constructor (port = 0, ports = []) {
     super();
 
+    this.port = port;
+    this.ports = ports;
     this.devices = {};
     this.sockets = [];
   }
@@ -68,7 +70,7 @@ class Broadlink extends EventEmitter {
       socket.on('listening', this.onListening.bind(this, socket, ipAddress));
       socket.on('message', this.onMessage.bind(this));
 
-      socket.bind(0, ipAddress);
+      socket.bind(this.port, ipAddress);
     })
   }
 
@@ -197,7 +199,8 @@ class Broadlink extends EventEmitter {
     }
     
     // The Broadlink device is something we can use.
-    const device = new Device(host, macAddress, deviceType)
+    const port = this.ports.pop() || 0;
+    const device = new Device(host, macAddress, deviceType, port)
     device.log = log;
     device.debug = debug;
 
@@ -220,6 +223,7 @@ class Device {
     this.emitter = new EventEmitter();
     this.log = console.log;
     this.type = deviceType;
+    this.port = port;
     this.model = rmDeviceTypes[parseInt(deviceType, 16)] || rmPlusDeviceTypes[parseInt(deviceType, 16)];
 
     this.on = this.emitter.on;
@@ -277,7 +281,7 @@ class Device {
       }
     });
 
-    socket.bind();
+    socket.bind(this.port);
   }
 
   authenticate () {
